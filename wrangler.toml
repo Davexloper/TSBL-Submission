@@ -2,3 +2,7 @@
 name = "the-spacebar-list"
 compatibility_date = "2026-10-16"
 pages_build_output_dir = "."
+
+[[kv_namespaces]]
+binding = "SUBMISSIONS"
+id = "2edf64af5a644122b36b46738aab5fa5"

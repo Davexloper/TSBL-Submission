@@ -119,8 +119,23 @@ button.submit:hover {
     background: #55d5ff;
 }
 
+button.submit:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
 #status {
     margin-top: 15px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+#status.success {
+    color: #65e6a5;
+}
+
+#status.error {
+    color: #ff7777;
 }
 
 @media (max-width: 650px) {
@@ -142,54 +157,60 @@ button.submit:hover {
 
 <form id="form">
 
-<label for="discord">Discord User (@NAME)</label>
-<input id="discord" name="discord" placeholder="@username" required>
+    <label for="discord">Discord User (@NAME)</label>
+    <input id="discord" name="discord" placeholder="@username" required>
 
-<label>Level</label>
-<div class="level-dropdown">
-    <button type="button" class="level-button" id="levelButton">
-        Loading levels..
-    </button>
+    <label for="levelButton">Level</label>
+    <div class="level-dropdown">
+        <button type="button" class="level-button" id="levelButton">
+            Loading levels...
+        </button>
 
-    <div class="level-menu" id="levelMenu">
-        <input id="levelSearch" placeholder="Search levels...">
-        <div class="level-options" id="levelOptions"></div>
+        <div class="level-menu" id="levelMenu">
+            <input id="levelSearch" placeholder="Search levels..." autocomplete="off">
+            <div class="level-options" id="levelOptions"></div>
+        </div>
+
+        <input type="hidden" id="level" name="level" required>
     </div>
 
-    <input type="hidden" id="level" name="level" required>
-</div>
+    <label for="profile">What do you want your profile to be displayed at the list? (Case Sensitive)</label>
+    <input id="profile" name="profile" placeholder="Your profile name" required>
 
-<label for="profile">What do you want your profile to be displayed at the list? (Case Sensitive)</label>
-<input id="profile" name="profile" placeholder="Your profile name" required>
+    <label for="completion">Completion Link (YouTube Only!)</label>
+    <input id="completion" name="completion" type="url"
+        placeholder="https://youtube.com/..." required>
 
-<label for="completion">Completion Link (Youtube Only!)</label>
-<input id="completion" name="completion" type="url" placeholder="https://youtube.com/..." required>
+    <label for="footage">Raw Footage</label>
+    <input id="footage" name="footage" type="url"
+        placeholder="Google Drive / Medal / YouTube">
+    <small>Required for INSANE DEMONS and above.</small>
 
-<label for="footage">Raw Footage</label>
-<input id="footage" name="footage" type="url" placeholder="Google Drive / Medal / YouTube">
-<small>Required for INSANE DEMONS and above.</small>
+    <label for="percent">Percent achieved?</label>
+    <select id="percent" name="percent" required>
+        <option value="">Select percentage</option>
+    </select>
 
-<label for="percent">Percent achieved?</label>
-<select id="percent" name="percent" required>
-    <option value="">Select percentage</option>
-</select>
+    <label for="fps">What FPS are you playing on?</label>
+    <input id="fps" name="fps" type="number" min="1" value="60" required>
 
-<label for="fps">What FPS are you playing on?</label>
-<input id="fps" name="fps" type="number" min="1" value="60" required>
-
-<button class="submit" type="submit">Submit</button>
-<p id="status"></p>
+    <button class="submit" id="submitButton" type="submit">Submit</button>
+    <p id="status" role="status" aria-live="polite"></p>
 
 </form>
 
 <script>
-const github = "https://raw.githubusercontent.com/mrMonky300/The-Spacebar-List/main/data/";
+const github =
+    "https://raw.githubusercontent.com/mrMonky300/The-Spacebar-List/main/data/";
+
+const form = document.getElementById("form");
 const button = document.getElementById("levelButton");
 const menu = document.getElementById("levelMenu");
 const search = document.getElementById("levelSearch");
 const options = document.getElementById("levelOptions");
 const levelInput = document.getElementById("level");
 const status = document.getElementById("status");
+const submitButton = document.getElementById("submitButton");
 
 let levels = [];
 
@@ -199,12 +220,18 @@ for (let i = 1; i <= 100; i++) {
     );
 }
 
+function showStatus(message, type = "") {
+    status.textContent = message;
+    status.className = type;
+}
+
 function renderLevels(query = "") {
     options.replaceChildren();
 
     const filtered = levels.filter(level =>
-        `#${level.rank} ${level.name}`.toLowerCase()
-        .includes(query.toLowerCase())
+        `#${level.rank} ${level.name}`
+            .toLowerCase()
+            .includes(query.toLowerCase())
     );
 
     if (!filtered.length) {
@@ -221,6 +248,7 @@ function renderLevels(query = "") {
             levelInput.value = level.name;
             button.textContent = item.textContent;
             menu.classList.remove("open");
+            showStatus("");
         };
 
         options.appendChild(item);
@@ -231,7 +259,10 @@ button.onclick = () => {
     menu.classList.toggle("open");
     search.value = "";
     renderLevels();
-    if (menu.classList.contains("open")) search.focus();
+
+    if (menu.classList.contains("open")) {
+        search.focus();
+    }
 };
 
 search.oninput = () => renderLevels(search.value);
@@ -245,29 +276,36 @@ document.addEventListener("click", event => {
 async function loadLevels() {
     try {
         const response = await fetch(github + "_list.json");
-        if (!response.ok) throw new Error("Failed to load list");
+
+        if (!response.ok) {
+            throw new Error("Failed to load level list.");
+        }
 
         const entries = await response.json();
 
-        levels = (await Promise.all(entries.map(async (entry, index) => {
-            const filename = typeof entry === "string" ? entry : entry.name;
+        levels = (await Promise.all(
+            entries.map(async (entry, index) => {
+                const filename =
+                    typeof entry === "string" ? entry : entry.name;
 
-            try {
-                const response = await fetch(
-                    github + encodeURIComponent(filename) + ".json"
-                );
-                if (!response.ok) return null;
+                try {
+                    const response = await fetch(
+                        github + encodeURIComponent(filename) + ".json"
+                    );
 
-                const data = await response.json();
+                    if (!response.ok) return null;
 
-                return {
-                    rank: index + 1,
-                    name: data.name || filename
-                };
-            } catch {
-                return null;
-            }
-        }))).filter(Boolean);
+                    const data = await response.json();
+
+                    return {
+                        rank: index + 1,
+                        name: data.name || filename
+                    };
+                } catch {
+                    return null;
+                }
+            })
+        )).filter(Boolean);
 
         button.textContent = "Select a level";
         renderLevels();
@@ -278,20 +316,79 @@ async function loadLevels() {
     }
 }
 
-document.getElementById("form").onsubmit = event => {
+form.addEventListener("submit", async event => {
     event.preventDefault();
 
-    if (!event.target.reportValidity()) return;
+    if (!form.reportValidity()) return;
 
-    if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(
-        document.getElementById("completion").value
-    )) {
-        status.textContent = "Please enter a YouTube link.";
+    const completionUrl =
+        document.getElementById("completion").value.trim();
+
+    if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(completionUrl)) {
+        showStatus("Please enter a valid YouTube link.", "error");
         return;
     }
 
-    status.textContent = "Form checked! Backend not connected yet.";
-};
+    if (!levelInput.value) {
+        showStatus("Please select a level.", "error");
+        button.focus();
+        return;
+    }
+
+    const submission = Object.fromEntries(
+        new FormData(form).entries()
+    );
+
+    submission.discord = submission.discord.trim();
+    submission.profile = submission.profile.trim();
+    submission.completion = completionUrl;
+    submission.footage = submission.footage.trim();
+    submission.percent = Number(submission.percent);
+    submission.fps = Number(submission.fps);
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Submitting...";
+    showStatus("Submitting your record...");
+
+    try {
+        const response = await fetch("/api/submissions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(submission)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result.error || "Your submission could not be saved."
+            );
+        }
+
+        showStatus(
+            "Your record has been submitted successfully!",
+            "success"
+        );
+
+        form.reset();
+        levelInput.value = "";
+        button.textContent = "Select a level";
+        menu.classList.remove("open");
+
+    } catch (error) {
+        console.error(error);
+
+        showStatus(
+            "Submission failed: " + error.message,
+            "error"
+        );
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Submit";
+    }
+});
 
 loadLevels();
 </script>
