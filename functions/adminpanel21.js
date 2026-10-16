@@ -170,6 +170,7 @@ function page(content, title = "Admin Panel") {
             --accent: #00bfff;
             --accent-hover: #38ccff;
             --danger: #ff626f;
+            --success: #39d98a;
         }
 
         * {
@@ -320,6 +321,19 @@ function page(content, title = "Admin Panel") {
             color: #ff929b;
         }
 
+        .button-done {
+            width: 100%;
+            min-height: 49px;
+            color: #07180f;
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .button-done:hover {
+            background: #62e6a3;
+            border-color: #62e6a3;
+        }
+
         .full-width {
             width: 100%;
             margin-top: 18px;
@@ -453,6 +467,10 @@ function page(content, title = "Admin Panel") {
             text-decoration: underline;
         }
 
+        .review-actions {
+            margin-top: 22px;
+        }
+
         .empty {
             padding: 42px 20px;
             text-align: center;
@@ -525,8 +543,7 @@ function page(content, title = "Admin Panel") {
 </head>
 <body>
     <main class="container">
-        <header class="brand">
-        </header>
+        <header class="brand"></header>
         ${content}
     </main>
 </body>
@@ -642,6 +659,7 @@ function dashboardPage(submissions, index, error = "") {
             ` : ""}
 
             <div class="toolbar">
+                <span class="toolbar-label">Submission Review</span>
 
                 <nav class="navigator" aria-label="Submission navigation">
                     <form method="POST" action="/adminpanel21">
@@ -689,6 +707,23 @@ function dashboardPage(submissions, index, error = "") {
                     </div>
                 `}
             </div>
+
+            <form
+                class="review-actions"
+                method="POST"
+                action="/adminpanel21"
+                onsubmit="return confirm('Mark this submission as done and permanently delete it?')"
+            >
+                <input type="hidden" name="action" value="done">
+                <input
+                    type="hidden"
+                    name="id"
+                    value="${escapeHtml(submission.id || "")}"
+                >
+                <button class="button button-done" type="submit">
+                    Done
+                </button>
+            </form>
 
             <footer class="footer">
                 <span class="footer-note">
@@ -816,10 +851,10 @@ export async function onRequest({ request, env }) {
         const password = String(form.get("password") || "");
 
         if (!constantTimeEqual(password, env.ROOT_PASSWORD)) {
-            return new Response(loginPage("Incorrect password. Please try again."), {
-                status: 401,
-                headers: HEADERS
-            });
+            return new Response(
+                loginPage("Incorrect password. Please try again."),
+                { status: 401, headers: HEADERS }
+            );
         }
 
         const session = await createSession(env.SESSION_SECRET);
@@ -867,6 +902,74 @@ export async function onRequest({ request, env }) {
                         <a class="button" href="/adminpanel21">Try Again</a>
                     </section>
                 `, "Storage Error"),
+                { status: 500, headers: HEADERS }
+            );
+        }
+    }
+
+    if (action === "done") {
+        if (!isLoggedIn) {
+            return redirect("/adminpanel21");
+        }
+
+        const id = String(form.get("id") || "");
+
+        if (!id) {
+            return redirect("/adminpanel21");
+        }
+
+        try {
+            const submissions = await getSubmissions(env);
+
+            const index = submissions.findIndex(
+                submission => String(submission.id || "") === id
+            );
+
+            if (index === -1) {
+                return new Response(
+                    page(`
+                        <section class="panel">
+                            <h1>Submission Not Found</h1>
+                            <p class="subtitle">
+                                This submission may already have been removed.
+                            </p>
+                            <a class="button button-primary" href="/adminpanel21">
+                                Back to Submissions
+                            </a>
+                        </section>
+                    `, "Submission Not Found"),
+                    { status: 404, headers: HEADERS }
+                );
+            }
+
+            submissions.splice(index, 1);
+
+            await env.SUBMISSIONS.put(
+                "submissions",
+                JSON.stringify(submissions)
+            );
+
+            const nextIndex = Math.min(index, submissions.length - 1);
+
+            return redirect(
+                `/adminpanel21?index=${Math.max(nextIndex, 0)}`
+            );
+        } catch (error) {
+            return new Response(
+                page(`
+                    <section class="panel">
+                        <h1>Could Not Delete Submission</h1>
+                        <p class="subtitle">
+                            The submission could not be deleted. Please try again.
+                        </p>
+                        <div class="message message-error">
+                            ${escapeHtml(error.message)}
+                        </div>
+                        <a class="button button-primary" href="/adminpanel21">
+                            Back to Admin Panel
+                        </a>
+                    </section>
+                `, "Deletion Error"),
                 { status: 500, headers: HEADERS }
             );
         }
