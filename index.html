@@ -1,0 +1,300 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Submit a Record</title>
+
+<style>
+body {
+    background: #111318;
+    color: #eee;
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: 45px auto;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+}
+
+p {
+    color: #999;
+    font-size: 14px;
+}
+
+form {
+    background: #191c23;
+    padding: 25px;
+    border: 1px solid #2b303b;
+    border-radius: 10px;
+    margin-top: 25px;
+}
+
+label {
+    display: block;
+    margin: 20px 0 8px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+input, select, .level-button {
+    width: 100%;
+    padding: 12px;
+    box-sizing: border-box;
+    background: #111318;
+    color: white;
+    border: 1px solid #343a47;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+input:focus, select:focus, .level-button:focus {
+    outline: none;
+    border-color: #00bfff;
+}
+
+.level-dropdown {
+    position: relative;
+}
+
+.level-button {
+    text-align: left;
+    cursor: pointer;
+}
+
+.level-menu {
+    display: none;
+    position: absolute;
+    z-index: 5;
+    width: 100%;
+    margin-top: 5px;
+    background: #191c23;
+    border: 1px solid #343a47;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.level-menu.open {
+    display: block;
+}
+
+.level-options {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.level-option {
+    padding: 10px 12px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.level-option:hover {
+    background: #263747;
+}
+
+small {
+    display: block;
+    color: #999;
+    margin-top: 7px;
+}
+
+button.submit {
+    width: 100%;
+    margin-top: 25px;
+    padding: 13px;
+    background: #00bfff;
+    color: #081118;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button.submit:hover {
+    background: #55d5ff;
+}
+
+#status {
+    margin-top: 15px;
+}
+
+@media (max-width: 650px) {
+    body {
+        margin: 20px auto;
+    }
+
+    form {
+        padding: 18px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<h1>Submit a Record</h1>
+<p>Fill out the form to submit your completion.</p>
+
+<form id="form">
+
+<label for="discord">Discord User (@NAME)</label>
+<input id="discord" name="discord" placeholder="@username" required>
+
+<label>Level</label>
+<div class="level-dropdown">
+    <button type="button" class="level-button" id="levelButton">
+        Loading levels...
+    </button>
+
+    <div class="level-menu" id="levelMenu">
+        <input id="levelSearch" placeholder="Search levels...">
+        <div class="level-options" id="levelOptions"></div>
+    </div>
+
+    <input type="hidden" id="level" name="level" required>
+</div>
+
+<label for="profile">What do you want your profile to be displayed at the list? (Case Sensitive)</label>
+<input id="profile" name="profile" placeholder="Your profile name" required>
+
+<label for="completion">Completion Link (Youtube Only!)</label>
+<input id="completion" name="completion" type="url" placeholder="https://youtube.com/..." required>
+
+<label for="footage">Raw Footage</label>
+<input id="footage" name="footage" type="url" placeholder="Google Drive / Medal / YouTube">
+<small>Required for INSANE DEMONS and above.</small>
+
+<label for="percent">Percent achieved?</label>
+<select id="percent" name="percent" required>
+    <option value="">Select percentage</option>
+</select>
+
+<label for="fps">What FPS are you playing on?</label>
+<input id="fps" name="fps" type="number" min="1" value="60" required>
+
+<button class="submit" type="submit">Submit</button>
+<p id="status"></p>
+
+</form>
+
+<script>
+const github = "https://raw.githubusercontent.com/mrMonky300/The-Spacebar-List/main/data/";
+const button = document.getElementById("levelButton");
+const menu = document.getElementById("levelMenu");
+const search = document.getElementById("levelSearch");
+const options = document.getElementById("levelOptions");
+const levelInput = document.getElementById("level");
+const status = document.getElementById("status");
+
+let levels = [];
+
+for (let i = 1; i <= 100; i++) {
+    document.getElementById("percent").add(
+        new Option(i + "%", i)
+    );
+}
+
+function renderLevels(query = "") {
+    options.replaceChildren();
+
+    const filtered = levels.filter(level =>
+        `#${level.rank} ${level.name}`.toLowerCase()
+        .includes(query.toLowerCase())
+    );
+
+    if (!filtered.length) {
+        options.textContent = "No levels found.";
+        return;
+    }
+
+    filtered.forEach(level => {
+        const item = document.createElement("div");
+        item.className = "level-option";
+        item.textContent = `[#${level.rank}] ${level.name}`;
+
+        item.onclick = () => {
+            levelInput.value = level.name;
+            button.textContent = item.textContent;
+            menu.classList.remove("open");
+        };
+
+        options.appendChild(item);
+    });
+}
+
+button.onclick = () => {
+    menu.classList.toggle("open");
+    search.value = "";
+    renderLevels();
+    if (menu.classList.contains("open")) search.focus();
+};
+
+search.oninput = () => renderLevels(search.value);
+
+document.addEventListener("click", event => {
+    if (!event.target.closest(".level-dropdown")) {
+        menu.classList.remove("open");
+    }
+});
+
+async function loadLevels() {
+    try {
+        const response = await fetch(github + "_list.json");
+        if (!response.ok) throw new Error("Failed to load list");
+
+        const entries = await response.json();
+
+        levels = (await Promise.all(entries.map(async (entry, index) => {
+            const filename = typeof entry === "string" ? entry : entry.name;
+
+            try {
+                const response = await fetch(
+                    github + encodeURIComponent(filename) + ".json"
+                );
+                if (!response.ok) return null;
+
+                const data = await response.json();
+
+                return {
+                    rank: index + 1,
+                    name: data.name || filename
+                };
+            } catch {
+                return null;
+            }
+        }))).filter(Boolean);
+
+        button.textContent = "Select a level";
+        renderLevels();
+
+    } catch (error) {
+        console.error(error);
+        button.textContent = "Failed to load levels";
+    }
+}
+
+document.getElementById("form").onsubmit = event => {
+    event.preventDefault();
+
+    if (!event.target.reportValidity()) return;
+
+    if (!/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(
+        document.getElementById("completion").value
+    )) {
+        status.textContent = "Please enter a YouTube link.";
+        return;
+    }
+
+    status.textContent = "Form checked! Backend not connected yet.";
+};
+
+loadLevels();
+</script>
+
+</body>
+</html>
