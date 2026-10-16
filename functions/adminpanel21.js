@@ -612,7 +612,6 @@ function dashboardPage(submissions, index, error = "") {
                 ` : ""}
 
                 <footer class="footer">
-                    <span class="footer-note">The Spacebar List Admin</span>
                     <form method="POST" action="/adminpanel21">
                         <input type="hidden" name="action" value="logout">
                         <button class="button button-danger" type="submit">
