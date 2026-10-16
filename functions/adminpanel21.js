@@ -526,8 +526,6 @@ function page(content, title = "Admin Panel") {
 <body>
     <main class="container">
         <header class="brand">
-            <p class="brand-name">The Spacebar List</p>
-            <div class="brand-subtitle">Private Administration Panel</div>
         </header>
         ${content}
     </main>
@@ -636,9 +634,6 @@ function dashboardPage(submissions, index, error = "") {
     return page(`
         <section class="panel">
             <h1>Record Submissions</h1>
-            <p class="subtitle">
-                Browse submissions and review every answer.
-            </p>
 
             ${error ? `
                 <div class="message message-error" role="alert">
@@ -647,7 +642,6 @@ function dashboardPage(submissions, index, error = "") {
             ` : ""}
 
             <div class="toolbar">
-                <span class="toolbar-label">Submission Navigator</span>
 
                 <nav class="navigator" aria-label="Submission navigation">
                     <form method="POST" action="/adminpanel21">
